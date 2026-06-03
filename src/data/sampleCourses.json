@@ -1,0 +1,72 @@
+[
+  {
+    "id": "ciencias-computacion-1-algebra-superior-i",
+    "name": "Álgebra Superior I",
+    "normalizedName": "algebra superior i",
+    "career": "Ciencias de la Computación",
+    "plan": "Plan 2013",
+    "semester": "Primer semestre",
+    "type": "Obligatoria",
+    "credits": 10,
+    "department": "Matemáticas",
+    "isActive": true,
+    "sourceUrl": "https://www.fciencias.unam.mx/docencia/horarios/20261/1556/7",
+    "groups": [
+      {
+        "id": "4000",
+        "groupNumber": "4000",
+        "professors": ["Claudia Solís Said"],
+        "assistants": ["Ayudante no asignado"],
+        "modality": "Presencial",
+        "schedules": [
+          { "day": "Lu", "start": "07:00", "end": "08:00", "classroom": "Aula X", "type": "teoría" },
+          { "day": "Mi", "start": "07:00", "end": "08:00", "classroom": "Aula X", "type": "teoría" },
+          { "day": "Vi", "start": "07:00", "end": "08:00", "classroom": "Aula X", "type": "teoría" },
+          { "day": "Ma", "start": "07:00", "end": "08:00", "classroom": "Aula X", "type": "ayudantía" },
+          { "day": "Ju", "start": "07:00", "end": "08:00", "classroom": "Aula X", "type": "ayudantía" }
+        ],
+        "classroom": "Aula X",
+        "quota": 40,
+        "students": 23,
+        "rating": null,
+        "tags": ["Presencial", "Buen horario"]
+      },
+      {
+        "id": "4001",
+        "groupNumber": "4001",
+        "professors": ["Tetis Gisela Camacho Espinoza"],
+        "assistants": ["Ayudante no asignado"],
+        "modality": "Presencial",
+        "schedules": [
+          { "day": "Lu", "start": "09:00", "end": "10:00", "classroom": "Aula X", "type": "teoría" },
+          { "day": "Mi", "start": "09:00", "end": "10:00", "classroom": "Aula X", "type": "teoría" },
+          { "day": "Vi", "start": "09:00", "end": "10:00", "classroom": "Aula X", "type": "teoría" },
+          { "day": "Ma", "start": "09:00", "end": "10:00", "classroom": "Aula X", "type": "ayudantía" },
+          { "day": "Ju", "start": "09:00", "end": "10:00", "classroom": "Aula X", "type": "ayudantía" }
+        ],
+        "classroom": "Aula X",
+        "quota": 90,
+        "students": 84,
+        "rating": null,
+        "tags": ["Presencial"]
+      },
+      {
+        "id": "4002",
+        "groupNumber": "4002",
+        "professors": ["Adriana León Montes"],
+        "assistants": [],
+        "modality": "Presencial",
+        "schedules": [
+          { "day": "Lu", "start": "09:00", "end": "10:00", "classroom": "Aula Y", "type": "teoría" },
+          { "day": "Mi", "start": "09:00", "end": "10:00", "classroom": "Aula Y", "type": "teoría" },
+          { "day": "Vi", "start": "09:00", "end": "10:00", "classroom": "Aula Y", "type": "teoría" }
+        ],
+        "classroom": "Aula Y",
+        "quota": null,
+        "students": null,
+        "rating": null,
+        "tags": ["Presencial"]
+      }
+    ]
+  }
+]
