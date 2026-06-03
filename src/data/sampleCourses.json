@@ -28,7 +28,18 @@
         "classroom": "Aula X",
         "quota": 40,
         "students": 23,
-        "rating": null,
+        "rating": 8.1,
+        "professorRatings": [
+          {
+            "name": "Claudia Solís Said",
+            "score": 8.1,
+            "reviewCount": 35,
+            "source": "misprofesores.com",
+            "sourceUrl": "https://www.misprofesores.com/profesores/Claudia-Solis-Said_47873",
+            "professorId": "47873",
+            "reviews": []
+          }
+        ],
         "tags": ["Presencial", "Buen horario"]
       },
       {

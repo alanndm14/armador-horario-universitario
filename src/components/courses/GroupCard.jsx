@@ -48,6 +48,16 @@ export function GroupCard({ course, group, selectedItems, selected, onAdd, onDet
             </dd>
           </div>
         )}
+        {!firstReview && firstRating?.sourceUrl && (
+          <a
+            className="text-xs font-bold text-teal-700 underline dark:text-teal-300"
+            href={firstRating.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Ver reseñas en MisProfesores
+          </a>
+        )}
       </dl>
       <div className="mt-3 flex gap-2">
         <Button className="flex-1" variant={selected ? 'ghost' : 'primary'} onClick={onAdd} disabled={selected}>
