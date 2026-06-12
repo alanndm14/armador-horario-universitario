@@ -46,7 +46,8 @@ export function ScheduleSummary({ items, onSave, onPng, onPdf, onCopy, onJson, o
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-sm font-bold text-slate-900 dark:text-white">{item.name}</p>
-                <p className="text-xs text-slate-500">Grupo {item.groupNumber}</p>
+                {item.topic && <p className="text-xs font-semibold text-teal-700 dark:text-teal-300">{item.topic}</p>}
+                <p className="text-xs text-slate-500">Grupo {item.groupNumber} · {item.plan ?? item.modality}</p>
               </div>
               <input
                 aria-label="Color de materia"

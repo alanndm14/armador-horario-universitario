@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth'
 import { auth, googleProvider, isFirebaseConfigured } from '../services/firebase.js'
 
 const AuthContext = createContext(null)
@@ -31,6 +31,7 @@ export function AuthProvider({ children }) {
       isDemo: !isFirebaseConfigured,
       login: async () => {
         if (!auth) return setUser(demoUser)
+        if (window.matchMedia('(max-width: 767px)').matches) return signInWithRedirect(auth, googleProvider)
         await signInWithPopup(auth, googleProvider)
       },
       logout: async () => {

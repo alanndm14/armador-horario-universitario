@@ -42,6 +42,8 @@ export default function AdminSync() {
             <div><p className="text-xs font-bold uppercase text-slate-400">Semestre</p><p className="mt-1 font-semibold">{meta?.semester ?? 'Cargando...'}</p></div>
             <div><p className="text-xs font-bold uppercase text-slate-400">Materias</p><p className="mt-1 font-semibold">{meta?.courseCount?.toLocaleString('es-MX') ?? 'Cargando...'}</p></div>
             <div><p className="text-xs font-bold uppercase text-slate-400">Grupos</p><p className="mt-1 font-semibold">{meta?.groupCount?.toLocaleString('es-MX') ?? 'Cargando...'}</p></div>
+            <div><p className="text-xs font-bold uppercase text-slate-400">Temas detallados</p><p className="mt-1 font-semibold">{meta?.topicCount?.toLocaleString('es-MX') ?? 'Cargando...'}</p></div>
+            <div><p className="text-xs font-bold uppercase text-slate-400">Presentaciones</p><p className="mt-1 font-semibold">{meta?.presentationCount?.toLocaleString('es-MX') ?? 'Cargando...'}</p></div>
             <div><p className="text-xs font-bold uppercase text-slate-400">Perfiles con calificación</p><p className="mt-1 font-semibold">{meta?.ratingMatches?.toLocaleString('es-MX') ?? 'Cargando...'}</p></div>
             <div><p className="text-xs font-bold uppercase text-slate-400">Perfiles con reseñas consultadas</p><p className="mt-1 font-semibold">{meta?.reviewPagesLoaded?.toLocaleString('es-MX') ?? 'Cargando...'}</p></div>
           </div>

@@ -3,10 +3,20 @@ import { NavLink } from 'react-router-dom'
 import { Button } from '../ui/Button.jsx'
 import { useAuth } from '../../hooks/useAuth.jsx'
 import { useTheme } from '../../hooks/useTheme.jsx'
+import { useToast } from '../ui/Toast.jsx'
 
 export function Header() {
   const { user, login, logout, isDemo } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const { showToast } = useToast()
+
+  async function handleLogin() {
+    try {
+      await login()
+    } catch (error) {
+      showToast(error.code === 'auth/popup-closed-by-user' ? 'Inicio de sesión cancelado' : 'No se pudo iniciar sesión con Google')
+    }
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-950">
@@ -56,7 +66,7 @@ export function Header() {
             <LogOut size={16} /> <span className="hidden sm:inline">{user.displayName ?? 'Salir'}</span>
           </Button>
         ) : (
-          <Button variant="primary" onClick={login}>
+          <Button variant="primary" onClick={handleLogin}>
             <LogIn size={16} /> Google
           </Button>
         )}

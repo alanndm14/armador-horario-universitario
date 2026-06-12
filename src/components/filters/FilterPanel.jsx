@@ -3,6 +3,12 @@ import { DAYS, DAY_LABELS } from '../../utils/time.js'
 import { Button } from '../ui/Button.jsx'
 
 function SelectField({ label, value, options, onChange, allLabel = 'Todas' }) {
+  const optionLabels = {
+    rating: 'Mejor calificación',
+    reviews: 'Más reseñas',
+    time: 'Hora más temprana',
+    group: 'Número de grupo',
+  }
   return (
     <label className="grid gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
       {label}
@@ -14,7 +20,7 @@ function SelectField({ label, value, options, onChange, allLabel = 'Todas' }) {
         <option value="">{allLabel}</option>
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {optionLabels[option] ?? option}
           </option>
         ))}
       </select>
@@ -26,12 +32,14 @@ export function FilterPanel({ filters, setFilters, facets }) {
   const update = (patch) => setFilters((current) => ({ ...current, ...patch }))
   const activeFilterCount = [
     filters.career,
+    filters.plan,
     filters.semester,
     filters.type,
     filters.modality,
     filters.minRating,
     filters.reviewsOnly,
     filters.roomOnly,
+    filters.presentationOnly,
     filters.hideOverlaps,
     filters.days.length > 0,
     filters.start !== '07:00',
@@ -41,6 +49,7 @@ export function FilterPanel({ filters, setFilters, facets }) {
   const clearFilters = () => setFilters((current) => ({
     ...current,
     career: '',
+    plan: '',
     semester: '',
     type: '',
     modality: '',
@@ -50,6 +59,7 @@ export function FilterPanel({ filters, setFilters, facets }) {
     minRating: '',
     reviewsOnly: false,
     roomOnly: false,
+    presentationOnly: false,
     hideOverlaps: false,
   }))
 
@@ -79,6 +89,7 @@ export function FilterPanel({ filters, setFilters, facets }) {
 
       <div className="grid gap-3">
         <SelectField label="Carrera" value={filters.career} options={facets.careers} onChange={(career) => update({ career })} />
+        <SelectField label="Plan de estudios" value={filters.plan} options={facets.plans} onChange={(plan) => update({ plan })} />
         <SelectField label="Semestre" value={filters.semester} options={facets.semesters} onChange={(semester) => update({ semester })} />
         <SelectField label="Tipo" value={filters.type} options={facets.types} onChange={(type) => update({ type })} />
         <SelectField label="Modalidad" value={filters.modality} options={facets.modalities} onChange={(modality) => update({ modality })} />
@@ -88,6 +99,13 @@ export function FilterPanel({ filters, setFilters, facets }) {
           options={['6', '7', '8', '9']}
           allLabel="Cualquier calificación"
           onChange={(minRating) => update({ minRating })}
+        />
+        <SelectField
+          label="Ordenar resultados"
+          value={filters.sortBy}
+          options={['rating', 'reviews', 'time', 'group']}
+          allLabel="Nombre de materia"
+          onChange={(sortBy) => update({ sortBy: sortBy || 'name' })}
         />
       </div>
 
@@ -127,6 +145,7 @@ export function FilterPanel({ filters, setFilters, facets }) {
       {[
         ['Solo con reseñas', 'reviewsOnly'],
         ['Solo con aula publicada', 'roomOnly'],
+        ['Solo con presentación', 'presentationOnly'],
         ['Ocultar traslapes', 'hideOverlaps'],
         ['Permitir traslapes', 'allowOverlaps'],
       ].map(([label, key]) => (

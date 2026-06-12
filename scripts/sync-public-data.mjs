@@ -106,7 +106,7 @@ function parseCoursePage(html, target) {
   const period = String(firstGroup?.calendario__periodo ?? settings.semestre ?? target.semesterCode ?? '')
   const sourceHash = crypto.createHash('sha256').update(html).digest('hex')
   const course = {
-    id: slugify(`${target.career}-${period}-${target.courseId || courseName}`),
+    id: slugify(`${target.career}-${target.planId}-${period}-${target.courseId || courseName}`),
     name: courseName,
     normalizedName: normalizeText(courseName),
     career: target.career || 'Facultad de Ciencias',
@@ -143,6 +143,7 @@ function parseCoursePage(html, target) {
     return {
       id: slugify(rawGroup.grupo__clave || rawGroup.grupo__id),
       groupNumber: String(rawGroup.grupo__clave ?? rawGroup.grupo__id ?? ''),
+      topic: rawGroup.grupo__subtitulo ?? null,
       professors: unique(professors),
       assistants: unique(assistants),
       modality: rawGroup.grupo__modalidad?.modalidad__nombre ?? 'Sin modalidad',
@@ -152,9 +153,13 @@ function parseCoursePage(html, target) {
       students: rawGroup.grupo__alumnos ?? null,
       rating: null,
       professorRatings: [],
-      notes: rawGroup.grupo__nota ?? rawGroup.grupo__subtitulo ?? null,
+      notes: rawGroup.grupo__nota ?? null,
       source: 'fciencias.unam.mx',
       sourceUrl: target.url,
+      hasPresentation: Boolean(rawGroup.grupo__tiene_presentacion),
+      presentationUrl: rawGroup.grupo__tiene_presentacion
+        ? `${BASE_URL}/docencia/horarios/presentacion/${rawGroup.grupo__id}`
+        : null,
       sourceGroupId: rawGroup.grupo__id,
       finalExams: rawGroup.grupo__finales ?? null,
       updatedAt: new Date().toISOString(),
@@ -344,6 +349,8 @@ async function main() {
 
   const careers = unique(courses.map((course) => course.career))
   const groupCount = courses.reduce((total, course) => total + course.groups.length, 0)
+  const topicCount = courses.flatMap((course) => course.groups).filter((group) => group.topic).length
+  const presentationCount = courses.flatMap((course) => course.groups).filter((group) => group.presentationUrl).length
   const payload = {
     meta: {
       generatedAt: new Date().toISOString(),
@@ -353,6 +360,8 @@ async function main() {
       planCount: plans.length,
       courseCount: courses.length,
       groupCount,
+      topicCount,
+      presentationCount,
       ratingsAvailable: ratings.size,
       ratingMatches: matchedRatings.size,
       reviewPagesLoaded: reviewCache.size,

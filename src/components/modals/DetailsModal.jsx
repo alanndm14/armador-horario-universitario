@@ -16,6 +16,7 @@ export function DetailsModal({ payload, onClose, onRemove }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-slate-950 dark:text-white">{item.name}</h2>
+            {item.topic && <p className="font-semibold text-teal-700 dark:text-teal-300">{item.topic}</p>}
             <p className="text-sm font-medium text-slate-500">Grupo {item.groupNumber}</p>
           </div>
           <button className="rounded-md p-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={onClose} aria-label="Cerrar">
@@ -35,7 +36,7 @@ export function DetailsModal({ payload, onClose, onRemove }) {
           {item.career && (
             <div>
               <p className="text-xs font-bold uppercase text-slate-400">Carrera y periodo</p>
-              <p className="font-medium">{item.career}{item.period ? ` · ${item.period}` : ''}</p>
+              <p className="font-medium">{item.career}{item.plan ? ` · ${item.plan}` : ''}{item.period ? ` · ${item.period}` : ''}</p>
             </div>
           )}
           <div>
@@ -48,6 +49,7 @@ export function DetailsModal({ payload, onClose, onRemove }) {
             {item.quota && <Badge tone="amber">{item.students ?? 0}/{item.quota} lugares</Badge>}
             {item.rating != null && <Badge tone="indigo">Promedio del equipo ★ {item.rating.toFixed(1)}</Badge>}
             {item.sourceUrl && <a className="text-xs font-bold text-teal-700 underline dark:text-teal-300" href={item.sourceUrl} target="_blank" rel="noreferrer">Fuente oficial</a>}
+            {item.presentationUrl && <a className="text-xs font-bold text-teal-700 underline dark:text-teal-300" href={item.presentationUrl} target="_blank" rel="noreferrer">Consultar presentación</a>}
           </div>
 
           {staffRatings.length > 0 && (

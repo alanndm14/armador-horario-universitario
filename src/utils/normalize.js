@@ -47,8 +47,11 @@ export function createSearchIndex(course, group) {
     [
       course.name,
       course.career,
+      course.plan,
       course.type,
       group.groupNumber,
+      group.topic,
+      group.classroom,
       group.modality,
       ...(group.professors ?? []),
       ...(group.assistants ?? []),

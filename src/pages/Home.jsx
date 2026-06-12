@@ -6,6 +6,7 @@ import { CourseExplorer } from '../components/courses/CourseExplorer.jsx'
 import { WeeklySchedule } from '../components/schedule/WeeklySchedule.jsx'
 import { MobileScheduleList } from '../components/schedule/MobileScheduleList.jsx'
 import { ScheduleSummary } from '../components/schedule/ScheduleSummary.jsx'
+import { ExportSchedule } from '../components/schedule/ExportSchedule.jsx'
 import { DetailsModal } from '../components/modals/DetailsModal.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { useCourses } from '../hooks/useCourses.js'
@@ -16,13 +17,50 @@ import { saveSchedule } from '../services/scheduleService.js'
 import { copySummary, downloadScheduleJson, downloadSchedulePdf, downloadSchedulePng } from '../utils/export.js'
 
 export default function Home() {
-  const scheduleRef = useRef(null)
+  const exportRef = useRef(null)
+  const layoutRef = useRef(null)
+  const [panelWidths, setPanelWidths] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('armador-panel-widths')) ?? { left: 320, right: 300 }
+    } catch {
+      return { left: 320, right: 300 }
+    }
+  })
   const { user } = useAuth()
   const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('horario')
   const [details, setDetails] = useState(null)
   const builder = useScheduleBuilder()
   const courses = useCourses(builder.selectedItems)
+
+  function startResize(side, event) {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidths = panelWidths
+    const containerWidth = layoutRef.current?.clientWidth ?? window.innerWidth
+
+    function onMove(moveEvent) {
+      const delta = moveEvent.clientX - startX
+      const next = {
+        ...startWidths,
+        [side]: Math.max(260, Math.min(520, startWidths[side] + (side === 'left' ? delta : -delta))),
+      }
+      if (containerWidth - next.left - next.right < 520) return
+      setPanelWidths(next)
+    }
+
+    function onUp() {
+      document.removeEventListener('pointermove', onMove)
+      document.removeEventListener('pointerup', onUp)
+      setPanelWidths((current) => {
+        localStorage.setItem('armador-panel-widths', JSON.stringify(current))
+        return current
+      })
+    }
+
+    document.addEventListener('pointermove', onMove)
+    document.addEventListener('pointerup', onUp)
+  }
 
   function handleAdd(course, group) {
     const result = builder.addGroup(course, group, courses.filters.allowOverlaps)
@@ -71,7 +109,11 @@ export default function Home() {
           ))}
         </div>
       </div>
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 md:grid-cols-[320px_minmax(0,1fr)_300px]">
+      <main
+        ref={layoutRef}
+        className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 md:grid-cols-[var(--layout-columns)]"
+        style={{ '--layout-columns': `${panelWidths.left}px 6px minmax(520px, 1fr) 6px ${panelWidths.right}px` }}
+      >
         <aside className={`${activeTab === 'materias' ? 'block' : 'hidden'} schedule-scrollbar overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4 md:block dark:border-slate-800 dark:bg-slate-950`}>
           <FilterPanel filters={courses.filters} setFilters={courses.setFilters} facets={courses.facets} />
           <div className="mt-4">
@@ -85,6 +127,7 @@ export default function Home() {
             />
           </div>
         </aside>
+        <button className="hidden cursor-col-resize rounded bg-slate-200 hover:bg-teal-500 md:block dark:bg-slate-800" onPointerDown={(event) => startResize('left', event)} aria-label="Redimensionar panel de materias" />
         <section className={`${activeTab === 'horario' ? 'block' : 'hidden'} min-h-0 md:block`}>
           <div className="mb-3 flex items-center justify-between">
             <div>
@@ -96,18 +139,19 @@ export default function Home() {
             </Button>
           </div>
           <div className="hidden h-[calc(100%-44px)] md:block">
-            <WeeklySchedule items={builder.selectedItems} onBlockClick={setDetails} scheduleRef={scheduleRef} />
+            <WeeklySchedule items={builder.selectedItems} onBlockClick={setDetails} />
           </div>
           <div className="schedule-scrollbar h-[calc(100vh-150px)] overflow-auto md:hidden">
             <MobileScheduleList items={builder.selectedItems} onBlockClick={setDetails} />
           </div>
         </section>
+        <button className="hidden cursor-col-resize rounded bg-slate-200 hover:bg-teal-500 md:block dark:bg-slate-800" onPointerDown={(event) => startResize('right', event)} aria-label="Redimensionar panel de mi horario" />
         <section className={`${activeTab === 'mi horario' ? 'block' : 'hidden'} min-h-0 md:block`}>
           <ScheduleSummary
             items={builder.selectedItems}
             onSave={handleSave}
-            onPng={() => downloadSchedulePng(scheduleRef.current).then(() => showToast('PNG descargado'))}
-            onPdf={() => downloadSchedulePdf(scheduleRef.current).then(() => showToast('PDF exportado'))}
+            onPng={() => downloadSchedulePng(exportRef.current).then(() => showToast('PNG descargado'))}
+            onPdf={() => downloadSchedulePdf(exportRef.current).then(() => showToast('PDF exportado'))}
             onCopy={() => copySummary(builder.selectedItems).then(() => showToast('Resumen copiado'))}
             onJson={() => {
               downloadScheduleJson(builder.selectedItems)
@@ -122,6 +166,7 @@ export default function Home() {
           />
         </section>
       </main>
+      <ExportSchedule ref={exportRef} items={builder.selectedItems} />
       <DetailsModal payload={details} onClose={() => setDetails(null)} onRemove={details?.selectionId ? builder.removeItem : null} />
     </div>
   )

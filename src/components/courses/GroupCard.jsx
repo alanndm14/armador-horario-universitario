@@ -1,4 +1,4 @@
-import { Eye, Plus } from 'lucide-react'
+import { Eye, ExternalLink, Plus } from 'lucide-react'
 import { Badge } from '../ui/Badge.jsx'
 import { Button } from '../ui/Button.jsx'
 import { formatSchedule } from '../../utils/time.js'
@@ -15,8 +15,9 @@ export function GroupCard({ course, group, selectedItems, selected, onAdd, onDet
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-bold text-slate-950 dark:text-white">{course.name}</p>
+          {group.topic && <p className="mt-1 text-sm font-semibold text-teal-700 dark:text-teal-300">{group.topic}</p>}
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grupo {group.groupNumber}</p>
-          <p className="text-xs text-slate-400">{course.career}</p>
+          <p className="text-xs text-slate-400">{course.career} · {course.plan}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <Badge tone={conflicts ? 'rose' : 'teal'}>{conflicts ? 'Riesgo de traslape' : group.modality}</Badge>
@@ -42,6 +43,7 @@ export function GroupCard({ course, group, selectedItems, selected, onAdd, onDet
           {(group.tags ?? [group.modality]).filter(Boolean).map((tag) => <Badge key={tag}>{tag}</Badge>)}
           {group.quota && <Badge tone="amber">{group.students ?? 0}/{group.quota}</Badge>}
           {reviewCount > 0 && <Badge tone="indigo">{reviewCount} reseñas del equipo</Badge>}
+          {group.presentationUrl && <Badge tone="teal">Presentación</Badge>}
         </div>
         {firstReview && (
           <div className="rounded-md bg-slate-50 p-2 dark:bg-slate-950">
@@ -57,6 +59,17 @@ export function GroupCard({ course, group, selectedItems, selected, onAdd, onDet
         <Button className="h-9 w-9 px-0" onClick={onDetails} aria-label="Ver detalles">
           <Eye size={15} />
         </Button>
+        {group.presentationUrl && (
+          <a
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            href={group.presentationUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Abrir presentación"
+          >
+            <ExternalLink size={15} />
+          </a>
+        )}
       </div>
     </article>
   )
