@@ -8,6 +8,9 @@ export function DetailsModal({ payload, onClose, onRemove }) {
   const item = payload.group
     ? {
         name: payload.course.name,
+        career: payload.course.career,
+        plan: payload.course.plan,
+        period: payload.course.period,
         ...payload.group,
       }
     : payload
@@ -30,6 +33,12 @@ export function DetailsModal({ payload, onClose, onRemove }) {
             <p className="text-xs font-bold uppercase text-slate-400">Profesorado</p>
             <p className="font-medium">{item.professors?.join(', ') || 'Sin registro'}</p>
           </div>
+          {item.career && (
+            <div>
+              <p className="text-xs font-bold uppercase text-slate-400">Carrera y periodo</p>
+              <p className="font-medium">{item.career}{item.period ? ` · ${item.period}` : ''}</p>
+            </div>
+          )}
           <div>
             <p className="text-xs font-bold uppercase text-slate-400">Ayudantes</p>
             <p className="font-medium">{item.assistants?.join(', ') || 'Sin registro'}</p>

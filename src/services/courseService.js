@@ -3,6 +3,17 @@ import sampleCourses from '../data/sampleCourses.json'
 import { db, isFirebaseConfigured } from './firebase.js'
 
 export async function getCourses() {
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL}data/courses.json`, { cache: 'no-store' })
+    if (response.ok) {
+      const payload = await response.json()
+      const courses = Array.isArray(payload) ? payload : payload.courses
+      if (courses?.length > 0) return courses
+    }
+  } catch (error) {
+    console.warn('No se pudo leer el catalogo automatico.', error)
+  }
+
   if (!isFirebaseConfigured || !db) return sampleCourses
 
   try {

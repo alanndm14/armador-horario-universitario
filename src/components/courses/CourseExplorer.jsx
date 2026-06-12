@@ -1,6 +1,20 @@
 import { ChevronDown } from 'lucide-react'
 import { GroupCard } from './GroupCard.jsx'
 
+const MAX_VISIBLE_GROUPS = 160
+
+function limitCourseGroups(courses, maxGroups) {
+  const visibleCourses = []
+  let remainingGroups = maxGroups
+  for (const course of courses) {
+    if (remainingGroups <= 0) break
+    const groups = course.groups.slice(0, remainingGroups)
+    remainingGroups -= groups.length
+    if (groups.length) visibleCourses.push({ ...course, groups })
+  }
+  return visibleCourses
+}
+
 export function CourseExplorer({ courses, loading, selectedItems, selectedIds, onAdd, onDetails }) {
   if (loading) {
     return (
@@ -20,7 +34,10 @@ export function CourseExplorer({ courses, loading, selectedItems, selectedIds, o
     )
   }
 
-  const groupsBySemester = courses.reduce((acc, course) => {
+  const totalGroups = courses.reduce((total, course) => total + course.groups.length, 0)
+  const visibleCourses = limitCourseGroups(courses, MAX_VISIBLE_GROUPS)
+
+  const groupsBySemester = visibleCourses.reduce((acc, course) => {
     const key = course.semester || 'Sin semestre'
     acc[key] = [...(acc[key] ?? []), course]
     return acc
@@ -28,6 +45,11 @@ export function CourseExplorer({ courses, loading, selectedItems, selectedIds, o
 
   return (
     <div className="space-y-4">
+      {totalGroups > MAX_VISIBLE_GROUPS && (
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          Mostrando los primeros {MAX_VISIBLE_GROUPS} de {totalGroups.toLocaleString('es-MX')} grupos.
+        </p>
+      )}
       {Object.entries(groupsBySemester).map(([semester, semesterCourses]) => (
         <section key={semester} className="space-y-2">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">

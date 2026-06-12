@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '17 9 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -30,6 +32,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Refresh public academic data
+        if: github.event_name != 'push'
+        run: npm run sync:data
+
+      - name: Save refreshed data
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/courses.json
+          git diff --cached --quiet || git commit -m "Refresh public academic data"
+          git push
 
       - name: Build
         run: npm run build
