@@ -40,7 +40,7 @@ export function Header() {
               }`
             }
           >
-            <DatabaseZap size={16} /> Admin
+            <DatabaseZap size={16} /> Datos
           </NavLink>
         </nav>
         {isDemo && (

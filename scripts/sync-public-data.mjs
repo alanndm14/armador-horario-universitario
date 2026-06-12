@@ -8,7 +8,7 @@ const MISPROFESORES_URL = 'https://www.misprofesores.com/escuelas/Facultad-de-Ci
 const OUTPUT_PATH = new URL('../public/data/courses.json', import.meta.url)
 const CONCURRENCY = Math.max(1, Number(process.env.SYNC_CONCURRENCY || 12))
 const MAX_COURSES = Math.max(0, Number(process.env.MAX_COURSES || 0))
-const MAX_REVIEW_PROFESSORS = Math.max(0, Number(process.env.MAX_REVIEW_PROFESSORS || 500))
+const MAX_REVIEW_PROFESSORS = Math.max(0, Number(process.env.MAX_REVIEW_PROFESSORS || 2000))
 const REVIEWS_PER_PROFESSOR = Math.max(0, Number(process.env.REVIEWS_PER_PROFESSOR || 2))
 const DAYS = [
   ['profesor_horario__lu', 'Lu'],
@@ -307,11 +307,19 @@ async function main() {
   const matchedRatings = new Map()
   for (const course of courses) {
     for (const group of course.groups) {
-      group.professorRatings = group.professors
-        .map((name) => ({ name, ...(ratings.get(normalizeText(name)) ?? {}) }))
-        .filter((rating) => rating.score != null)
-      group.rating = group.professorRatings[0]?.score ?? null
-      for (const rating of group.professorRatings) matchedRatings.set(rating.sourceUrl, rating)
+      const teachingStaff = [
+        ...group.professors.map((name) => ({ name, role: 'Profesor' })),
+        ...group.assistants.map((name) => ({ name, role: 'Ayudante' })),
+      ]
+      group.professorRatings = teachingStaff.map((person) => ({
+        ...person,
+        ...(ratings.get(normalizeText(person.name)) ?? {}),
+      }))
+      const scores = group.professorRatings.map((rating) => rating.score).filter(Number.isFinite)
+      group.rating = scores.length ? Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1)) : null
+      for (const rating of group.professorRatings) {
+        if (rating.sourceUrl) matchedRatings.set(rating.sourceUrl, rating)
+      }
     }
   }
 

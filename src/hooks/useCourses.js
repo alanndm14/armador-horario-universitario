@@ -12,6 +12,9 @@ const initialFilters = {
   days: [],
   start: '07:00',
   end: '22:00',
+  minRating: '',
+  reviewsOnly: false,
+  roomOnly: false,
   hideOverlaps: false,
   allowOverlaps: false,
 }
@@ -57,6 +60,11 @@ export function useCourses(selectedItems) {
           if (filters.modality && group.modality !== filters.modality) return false
           if (needle && !createSearchIndex(course, group).includes(needle)) return false
           if (filters.days.length && !group.schedules?.some((schedule) => filters.days.includes(schedule.day))) return false
+          if (filters.start && group.schedules?.some((schedule) => schedule.start < filters.start)) return false
+          if (filters.end && group.schedules?.some((schedule) => schedule.end > filters.end)) return false
+          if (filters.minRating && (group.rating == null || group.rating < Number(filters.minRating))) return false
+          if (filters.reviewsOnly && !group.professorRatings?.some((rating) => rating.reviews?.length > 0)) return false
+          if (filters.roomOnly && !group.classroom) return false
           if (filters.hideOverlaps && hasOverlap(group.schedules, selectedItems)) return false
           return true
         })

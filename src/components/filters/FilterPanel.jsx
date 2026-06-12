@@ -1,7 +1,8 @@
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { RotateCcw, Search, SlidersHorizontal } from 'lucide-react'
 import { DAYS, DAY_LABELS } from '../../utils/time.js'
+import { Button } from '../ui/Button.jsx'
 
-function SelectField({ label, value, options, onChange }) {
+function SelectField({ label, value, options, onChange, allLabel = 'Todas' }) {
   return (
     <label className="grid gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
       {label}
@@ -10,7 +11,7 @@ function SelectField({ label, value, options, onChange }) {
         onChange={(event) => onChange(event.target.value)}
         className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-800 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
       >
-        <option value="">Todas</option>
+        <option value="">{allLabel}</option>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -23,32 +24,73 @@ function SelectField({ label, value, options, onChange }) {
 
 export function FilterPanel({ filters, setFilters, facets }) {
   const update = (patch) => setFilters((current) => ({ ...current, ...patch }))
+  const activeFilterCount = [
+    filters.career,
+    filters.semester,
+    filters.type,
+    filters.modality,
+    filters.minRating,
+    filters.reviewsOnly,
+    filters.roomOnly,
+    filters.hideOverlaps,
+    filters.days.length > 0,
+    filters.start !== '07:00',
+    filters.end !== '22:00',
+  ].filter(Boolean).length
+
+  const clearFilters = () => setFilters((current) => ({
+    ...current,
+    career: '',
+    semester: '',
+    type: '',
+    modality: '',
+    days: [],
+    start: '07:00',
+    end: '22:00',
+    minRating: '',
+    reviewsOnly: false,
+    roomOnly: false,
+    hideOverlaps: false,
+  }))
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
-        <SlidersHorizontal size={17} /> Materias
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+          <SlidersHorizontal size={17} /> Buscar y filtrar
+          {activeFilterCount > 0 && <span className="text-xs text-teal-700 dark:text-teal-300">{activeFilterCount} activos</span>}
+        </div>
+        {activeFilterCount > 0 && (
+          <Button className="h-8 w-8 px-0" variant="ghost" onClick={clearFilters} aria-label="Limpiar filtros">
+            <RotateCcw size={15} />
+          </Button>
+        )}
       </div>
+
       <label className="relative block">
         <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
         <input
           value={filters.search}
           onChange={(event) => update({ search: event.target.value })}
-          placeholder="Buscar materia, profe o grupo"
+          placeholder="Materia, profesor, ayudante o grupo"
           className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-900 outline-none focus:border-teal-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         />
       </label>
+
       <div className="grid gap-3">
         <SelectField label="Carrera" value={filters.career} options={facets.careers} onChange={(career) => update({ career })} />
         <SelectField label="Semestre" value={filters.semester} options={facets.semesters} onChange={(semester) => update({ semester })} />
         <SelectField label="Tipo" value={filters.type} options={facets.types} onChange={(type) => update({ type })} />
+        <SelectField label="Modalidad" value={filters.modality} options={facets.modalities} onChange={(modality) => update({ modality })} />
         <SelectField
-          label="Modalidad"
-          value={filters.modality}
-          options={facets.modalities}
-          onChange={(modality) => update({ modality })}
+          label="Promedio mínimo del equipo"
+          value={filters.minRating}
+          options={['6', '7', '8', '9']}
+          allLabel="Cualquier calificación"
+          onChange={(minRating) => update({ minRating })}
         />
       </div>
+
       <div>
         <p className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Días disponibles</p>
         <div className="grid grid-cols-3 gap-2">
@@ -62,11 +104,7 @@ export function FilterPanel({ filters, setFilters, facets }) {
                     ? 'border-teal-600 bg-teal-50 text-teal-700 dark:border-teal-400 dark:bg-teal-950 dark:text-teal-200'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                 }`}
-                onClick={() =>
-                  update({
-                    days: active ? filters.days.filter((item) => item !== day) : [...filters.days, day],
-                  })
-                }
+                onClick={() => update({ days: active ? filters.days.filter((item) => item !== day) : [...filters.days, day] })}
               >
                 {DAY_LABELS[day].slice(0, 3)}
               </button>
@@ -74,44 +112,29 @@ export function FilterPanel({ filters, setFilters, facets }) {
           })}
         </div>
       </div>
+
       <div className="grid grid-cols-2 gap-2">
         <label className="grid gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
           Desde
-          <input
-            type="time"
-            value={filters.start}
-            onChange={(event) => update({ start: event.target.value })}
-            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-          />
+          <input type="time" value={filters.start} onChange={(event) => update({ start: event.target.value })} className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
           Hasta
-          <input
-            type="time"
-            value={filters.end}
-            onChange={(event) => update({ end: event.target.value })}
-            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900"
-          />
+          <input type="time" value={filters.end} onChange={(event) => update({ end: event.target.value })} className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
         </label>
       </div>
-      <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
-        Ocultar traslapes
-        <input
-          type="checkbox"
-          checked={filters.hideOverlaps}
-          onChange={(event) => update({ hideOverlaps: event.target.checked })}
-          className="h-4 w-4 accent-teal-600"
-        />
-      </label>
-      <label className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
-        Permitir traslapes
-        <input
-          type="checkbox"
-          checked={filters.allowOverlaps}
-          onChange={(event) => update({ allowOverlaps: event.target.checked })}
-          className="h-4 w-4 accent-teal-600"
-        />
-      </label>
+
+      {[
+        ['Solo con reseñas', 'reviewsOnly'],
+        ['Solo con aula publicada', 'roomOnly'],
+        ['Ocultar traslapes', 'hideOverlaps'],
+        ['Permitir traslapes', 'allowOverlaps'],
+      ].map(([label, key]) => (
+        <label key={key} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm font-semibold dark:border-slate-700 dark:bg-slate-900">
+          {label}
+          <input type="checkbox" checked={filters[key]} onChange={(event) => update({ [key]: event.target.checked })} className="h-4 w-4 accent-teal-600" />
+        </label>
+      ))}
     </section>
   )
 }

@@ -6,8 +6,9 @@ import { hasOverlap } from '../../utils/overlap.js'
 
 export function GroupCard({ course, group, selectedItems, selected, onAdd, onDetails }) {
   const conflicts = hasOverlap(group.schedules, selectedItems)
-  const firstRating = group.professorRatings?.find((rating) => rating.score != null)
-  const firstReview = firstRating?.reviews?.[0]
+  const ratedStaff = group.professorRatings?.filter((rating) => rating.score != null) ?? []
+  const firstReview = ratedStaff.flatMap((rating) => rating.reviews ?? [])[0]
+  const reviewCount = ratedStaff.reduce((total, rating) => total + (rating.reviewCount ?? 0), 0)
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -19,45 +20,34 @@ export function GroupCard({ course, group, selectedItems, selected, onAdd, onDet
         </div>
         <div className="flex flex-col items-end gap-1">
           <Badge tone={conflicts ? 'rose' : 'teal'}>{conflicts ? 'Riesgo de traslape' : group.modality}</Badge>
-          {firstRating && <Badge tone="indigo">★ {firstRating.score.toFixed(1)}</Badge>}
+          {group.rating != null && <Badge tone="indigo">Promedio ★ {group.rating.toFixed(1)}</Badge>}
         </div>
       </div>
       <dl className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300">
         <div>
-          <dt className="font-semibold text-slate-400">Profesor</dt>
+          <dt className="font-semibold text-slate-400">Profesores</dt>
           <dd>{group.professors?.join(', ') || 'Sin registro'}</dd>
         </div>
+        {!!group.assistants?.length && (
+          <div>
+            <dt className="font-semibold text-slate-400">Ayudantes</dt>
+            <dd>{group.assistants.join(', ')}</dd>
+          </div>
+        )}
         <div>
           <dt className="font-semibold text-slate-400">Horario</dt>
           <dd>{formatSchedule(group.schedules)}</dd>
         </div>
         <div className="flex flex-wrap gap-1">
-          {(group.tags ?? [group.modality]).filter(Boolean).map((tag) => (
-            <Badge key={tag} tone={tag.includes('Riesgo') ? 'rose' : 'slate'}>
-              {tag}
-            </Badge>
-          ))}
+          {(group.tags ?? [group.modality]).filter(Boolean).map((tag) => <Badge key={tag}>{tag}</Badge>)}
           {group.quota && <Badge tone="amber">{group.students ?? 0}/{group.quota}</Badge>}
-          {firstRating?.reviewCount > 0 && <Badge tone="indigo">{firstRating.reviewCount} reseñas</Badge>}
+          {reviewCount > 0 && <Badge tone="indigo">{reviewCount} reseñas del equipo</Badge>}
         </div>
         {firstReview && (
           <div className="rounded-md bg-slate-50 p-2 dark:bg-slate-950">
             <dt className="font-semibold text-slate-400">Reseña reciente</dt>
-            <dd className="line-clamp-3">
-              <span className="font-semibold">{firstReview.quality?.toFixed?.(1) ?? firstReview.ratingType}</span>
-              {firstReview.className ? ` · ${firstReview.className}` : ''}: {firstReview.comment}
-            </dd>
+            <dd className="line-clamp-3">{firstReview.comment}</dd>
           </div>
-        )}
-        {!firstReview && firstRating?.sourceUrl && (
-          <a
-            className="text-xs font-bold text-teal-700 underline dark:text-teal-300"
-            href={firstRating.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Ver reseñas en MisProfesores
-          </a>
         )}
       </dl>
       <div className="mt-3 flex gap-2">
