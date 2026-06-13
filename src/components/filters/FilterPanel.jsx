@@ -1,4 +1,4 @@
-import { RotateCcw, Search, SlidersHorizontal } from 'lucide-react'
+import { Download, RotateCcw, Search, SlidersHorizontal } from 'lucide-react'
 import { DAYS, DAY_LABELS } from '../../utils/time.js'
 import { Button } from '../ui/Button.jsx'
 
@@ -28,9 +28,10 @@ function SelectField({ label, value, options, onChange, allLabel = 'Todas' }) {
   )
 }
 
-export function FilterPanel({ filters, setFilters, facets }) {
+export function FilterPanel({ filters, setFilters, facets, resultCount, onExportCsv, onExportJson }) {
   const update = (patch) => setFilters((current) => ({ ...current, ...patch }))
   const activeFilterCount = [
+    filters.faculty,
     filters.career,
     filters.plan,
     filters.semester,
@@ -48,6 +49,7 @@ export function FilterPanel({ filters, setFilters, facets }) {
 
   const clearFilters = () => setFilters((current) => ({
     ...current,
+    faculty: '',
     career: '',
     plan: '',
     semester: '',
@@ -88,9 +90,10 @@ export function FilterPanel({ filters, setFilters, facets }) {
       </label>
 
       <div className="grid gap-3">
-        <SelectField label="Carrera" value={filters.career} options={facets.careers} onChange={(career) => update({ career })} />
-        <SelectField label="Plan de estudios" value={filters.plan} options={facets.plans} onChange={(plan) => update({ plan })} />
-        <SelectField label="Semestre" value={filters.semester} options={facets.semesters} onChange={(semester) => update({ semester })} />
+        <SelectField label="Facultad" value={filters.faculty} options={facets.faculties} onChange={(faculty) => update({ faculty, career: '', plan: '', semester: '', type: '', modality: '' })} />
+        <SelectField label="Carrera" value={filters.career} options={facets.careers} onChange={(career) => update({ career, plan: '', semester: '', type: '', modality: '' })} />
+        <SelectField label="Plan de estudios" value={filters.plan} options={facets.plans} onChange={(plan) => update({ plan, semester: '', type: '', modality: '' })} />
+        <SelectField label="Semestre" value={filters.semester} options={facets.semesters} onChange={(semester) => update({ semester, type: '', modality: '' })} />
         <SelectField label="Tipo" value={filters.type} options={facets.types} onChange={(type) => update({ type })} />
         <SelectField label="Modalidad" value={filters.modality} options={facets.modalities} onChange={(modality) => update({ modality })} />
         <SelectField
@@ -107,6 +110,18 @@ export function FilterPanel({ filters, setFilters, facets }) {
           allLabel="Nombre de materia"
           onChange={(sortBy) => update({ sortBy: sortBy || 'name' })}
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <Button variant="secondary" onClick={onExportCsv} disabled={!resultCount}>
+          <Download size={15} /> CSV completo
+        </Button>
+        <Button variant="secondary" onClick={onExportJson} disabled={!resultCount}>
+          <Download size={15} /> JSON completo
+        </Button>
+        <p className="col-span-2 text-xs font-medium text-slate-500">
+          Exporta los filtros y los {resultCount.toLocaleString('es-MX')} grupos encontrados con todos sus datos.
+        </p>
       </div>
 
       <div>

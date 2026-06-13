@@ -5,9 +5,9 @@ export const ExportSchedule = forwardRef(function ExportSchedule({ items }, ref)
   const courses = items.filter((item) => item.kind === 'course')
 
   return (
-    <section ref={ref} className="fixed left-[-10000px] top-0 w-[1400px] bg-white p-10 text-slate-950">
+    <section ref={ref} className="fixed left-0 top-0 -z-50 w-[1400px] bg-white p-10 text-slate-950 opacity-0 pointer-events-none">
       <header className="border-b-2 border-slate-900 pb-4">
-        <h1 className="text-3xl font-bold">Mi horario · Facultad de Ciencias UNAM</h1>
+        <h1 className="text-3xl font-bold">Mi horario · UNAM Ciudad Universitaria</h1>
         <p className="mt-1 text-sm">Generado el {new Date().toLocaleString('es-MX')} · {courses.length} materias</p>
       </header>
 
@@ -42,7 +42,7 @@ export const ExportSchedule = forwardRef(function ExportSchedule({ items }, ref)
           {items.map((item) => (
             <tr key={item.selectionId}>
               <td className="border border-slate-300 p-2"><strong>{item.name}</strong>{item.topic ? <><br />{item.topic}</> : null}</td>
-              <td className="border border-slate-300 p-2">{item.career || 'Personal'}{item.plan ? <><br />{item.plan}</> : null}</td>
+              <td className="border border-slate-300 p-2">{item.faculty || 'Personal'}{item.career ? <><br />{item.career}</> : null}{item.plan ? <><br />{item.plan}</> : null}</td>
               <td className="border border-slate-300 p-2">{item.groupNumber}</td>
               <td className="border border-slate-300 p-2">
                 Profesores: {item.professors?.join(', ') || 'N/A'}<br />

@@ -46,11 +46,14 @@ export function createSearchIndex(course, group) {
   return normalizeText(
     [
       course.name,
+      course.faculty,
+      course.campus,
       course.career,
       course.plan,
       course.type,
       group.groupNumber,
       group.topic,
+      group.notes,
       group.classroom,
       group.modality,
       ...(group.professors ?? []),

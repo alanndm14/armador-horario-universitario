@@ -6,7 +6,7 @@ import { formatSchedule } from '../../utils/time.js'
 export function DetailsModal({ payload, onClose, onRemove }) {
   if (!payload) return null
   const item = payload.group
-    ? { name: payload.course.name, career: payload.course.career, plan: payload.course.plan, period: payload.course.period, ...payload.group }
+    ? { name: payload.course.name, faculty: payload.course.faculty, campus: payload.course.campus, career: payload.course.career, plan: payload.course.plan, period: payload.course.period, ...payload.group }
     : payload
   const staffRatings = item.professorRatings ?? []
 
@@ -35,8 +35,8 @@ export function DetailsModal({ payload, onClose, onRemove }) {
           </div>
           {item.career && (
             <div>
-              <p className="text-xs font-bold uppercase text-slate-400">Carrera y periodo</p>
-              <p className="font-medium">{item.career}{item.plan ? ` · ${item.plan}` : ''}{item.period ? ` · ${item.period}` : ''}</p>
+              <p className="text-xs font-bold uppercase text-slate-400">Facultad, carrera y periodo</p>
+              <p className="font-medium">{item.faculty}{item.campus ? ` · ${item.campus}` : ''}<br />{item.career}{item.plan ? ` · ${item.plan}` : ''}{item.period ? ` · ${item.period}` : ''}</p>
             </div>
           )}
           <div>

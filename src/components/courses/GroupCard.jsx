@@ -17,7 +17,8 @@ export function GroupCard({ course, group, selectedItems, selected, onAdd, onDet
           <p className="text-sm font-bold text-slate-950 dark:text-white">{course.name}</p>
           {group.topic && <p className="mt-1 text-sm font-semibold text-teal-700 dark:text-teal-300">{group.topic}</p>}
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Grupo {group.groupNumber}</p>
-          <p className="text-xs text-slate-400">{course.career} · {course.plan}</p>
+          <p className="text-xs text-slate-400">{course.faculty} · {course.career}</p>
+          <p className="text-xs text-slate-400">{course.plan}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <Badge tone={conflicts ? 'rose' : 'teal'}>{conflicts ? 'Riesgo de traslape' : group.modality}</Badge>

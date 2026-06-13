@@ -2,19 +2,27 @@ import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 import sampleCourses from '../data/sampleCourses.json'
 import { db, isFirebaseConfigured } from './firebase.js'
 
+function withLocation(courses = []) {
+  return courses.map((course) => ({
+    faculty: course.faculty ?? 'Facultad de Ciencias',
+    campus: course.campus ?? 'Ciudad Universitaria',
+    ...course,
+  }))
+}
+
 export async function getCourses() {
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}data/courses.json`, { cache: 'no-store' })
     if (response.ok) {
       const payload = await response.json()
       const courses = Array.isArray(payload) ? payload : payload.courses
-      if (courses?.length > 0) return courses
+      if (courses?.length > 0) return withLocation(courses)
     }
   } catch (error) {
     console.warn('No se pudo leer el catalogo automatico.', error)
   }
 
-  if (!isFirebaseConfigured || !db) return sampleCourses
+  if (!isFirebaseConfigured || !db) return withLocation(sampleCourses)
 
   try {
     const coursesRef = collection(db, 'courses')
@@ -34,9 +42,9 @@ export async function getCourses() {
       }),
     )
 
-    return courses.length > 0 ? courses : sampleCourses
+    return withLocation(courses.length > 0 ? courses : sampleCourses)
   } catch (error) {
     console.warn('No se pudo leer Firestore; usando demo local.', error)
-    return sampleCourses
+    return withLocation(sampleCourses)
   }
 }

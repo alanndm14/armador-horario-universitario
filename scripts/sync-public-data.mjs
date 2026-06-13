@@ -5,6 +5,8 @@ import * as cheerio from 'cheerio'
 const BASE_URL = 'https://www.fciencias.unam.mx'
 const INDEX_URL = `${BASE_URL}/docencia/horarios/indice`
 const MISPROFESORES_URL = 'https://www.misprofesores.com/escuelas/Facultad-de-Ciencias-UNAM_2842'
+const FFYL_BASE_URL = 'https://servicios-galileo.filos.unam.mx'
+const FFYL_INDEX_URL = `${FFYL_BASE_URL}/horarios/ordinarios`
 const OUTPUT_PATH = new URL('../public/data/courses.json', import.meta.url)
 const CONCURRENCY = Math.max(1, Number(process.env.SYNC_CONCURRENCY || 12))
 const MAX_COURSES = Math.max(0, Number(process.env.MAX_COURSES || 0))
@@ -105,11 +107,14 @@ function parseCoursePage(html, target) {
   const planName = firstGroup?.plan__plan?.plan__nombre ?? target.planName ?? ''
   const period = String(firstGroup?.calendario__periodo ?? settings.semestre ?? target.semesterCode ?? '')
   const sourceHash = crypto.createHash('sha256').update(html).digest('hex')
+  const genericTopicCourse = /temas selectos|seminario/i.test(courseName)
   const course = {
     id: slugify(`${target.career}-${target.planId}-${period}-${target.courseId || courseName}`),
     name: courseName,
     normalizedName: normalizeText(courseName),
-    career: target.career || 'Facultad de Ciencias',
+    faculty: 'Facultad de Ciencias',
+    campus: 'Ciudad Universitaria',
+    career: target.career || 'Sin carrera publicada',
     plan: target.planName || planName,
     plans: unique([target.planName]),
     semester: target.semesterBlock ?? period,
@@ -143,7 +148,7 @@ function parseCoursePage(html, target) {
     return {
       id: slugify(rawGroup.grupo__clave || rawGroup.grupo__id),
       groupNumber: String(rawGroup.grupo__clave ?? rawGroup.grupo__id ?? ''),
-      topic: rawGroup.grupo__subtitulo ?? null,
+      topic: rawGroup.grupo__subtitulo ?? rawGroup.grupo__nota ?? (genericTopicCourse ? 'Tema no publicado por la Facultad' : null),
       professors: unique(professors),
       assistants: unique(assistants),
       modality: rawGroup.grupo__modalidad?.modalidad__nombre ?? 'Sin modalidad',
@@ -167,6 +172,108 @@ function parseCoursePage(html, target) {
   }).sort((a, b) => String(a.groupNumber).localeCompare(String(b.groupNumber), 'es', { numeric: true }))
 
   return { course, groups }
+}
+
+function parseFfylScheduleCell(value, day) {
+  const schedules = []
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim()
+  const pattern = /(\d{2})-(\d{2})(.*?)(?=\d{2}-\d{2}|$)/g
+  for (const match of text.matchAll(pattern)) {
+    schedules.push({
+      day,
+      start: `${match[1]}:00`,
+      end: `${match[2]}:00`,
+      classroom: match[3].trim() || null,
+      type: 'clase',
+      note: null,
+    })
+  }
+  return schedules
+}
+
+function getFfylPlans(html) {
+  const $ = cheerio.load(html)
+  return $('a[href*="/horarios/ordinarios/"]').map((_, link) => {
+    const href = $(link).attr('href')
+    const context = $(link).parent().parent().text().replace(/\s+/g, ' ').trim()
+    const career = context.split(/\bPlan\s+\d+/i)[0].trim()
+    return {
+      faculty: 'Facultad de Filosofía y Letras',
+      campus: 'Ciudad Universitaria',
+      career,
+      planName: $(link).text().replace(/\s+/g, ' ').trim(),
+      planId: href.split('/').pop(),
+      url: `${FFYL_BASE_URL}${href}`,
+    }
+  }).get().filter((plan) => plan.career && plan.planId)
+}
+
+function parseFfylPlanPage(html, target) {
+  const $ = cheerio.load(html)
+  const sourceHash = crypto.createHash('sha256').update(html).digest('hex')
+  const periodMatch = $.root().text().match(/SEMESTRE\s+(\d{4})[-\s]?(\d)/i)
+  const period = periodMatch ? `${periodMatch[1]}${periodMatch[2]}` : '20262'
+  const parsed = []
+  let current = null
+
+  $('table tr').each((_, row) => {
+    const cells = $(row).find('th,td').map((__, cell) => $(cell).text().replace(/\s+/g, ' ').trim()).get()
+    if (cells.length === 1) {
+      const heading = cells[0].match(/^([A-Z0-9-]+)\s*-\s*(.+)$/i)
+      if (!heading) return
+      const courseName = heading[2].trim()
+      current = {
+        course: {
+          id: slugify(`${target.faculty}-${target.career}-${target.planId}-${period}-${heading[1]}-${courseName}`),
+          name: courseName,
+          normalizedName: normalizeText(courseName),
+          faculty: target.faculty,
+          campus: target.campus,
+          career: target.career,
+          plan: target.planName,
+          plans: [target.planName],
+          semester: 'Sin semestre publicado',
+          period,
+          type: 'Sin clasificación publicada',
+          credits: null,
+          department: null,
+          isActive: true,
+          sourceUrl: target.url,
+          sourceHash,
+          lastSyncedAt: new Date().toISOString(),
+        },
+        groups: [],
+      }
+      parsed.push(current)
+      return
+    }
+    if (!current || cells.length < 9 || !/^\d+$/.test(cells[0])) return
+    const schedules = sortSchedules(cells.slice(3, 9).flatMap((cell, index) => parseFfylScheduleCell(cell, DAYS[index][1])))
+    const professor = cells[2].replace(/\S+@\S+/g, '').replace(/\s+/g, ' ').trim()
+    current.groups.push({
+      id: slugify(`${target.planId}-${current.course.id}-${cells[1]}`),
+      groupNumber: cells[1],
+      topic: null,
+      professors: professor ? [professor] : [],
+      assistants: [],
+      modality: 'Presencial',
+      schedules,
+      classroom: schedules.find((item) => item.classroom)?.classroom ?? null,
+      quota: null,
+      students: null,
+      rating: null,
+      professorRatings: [],
+      notes: null,
+      source: 'servicios-galileo.filos.unam.mx',
+      sourceUrl: target.url,
+      hasPresentation: false,
+      presentationUrl: null,
+      sourceGroupId: null,
+      finalExams: null,
+      updatedAt: new Date().toISOString(),
+    })
+  })
+  return parsed.filter((course) => course.groups.length)
 }
 
 async function fetchText(url, attempt = 1) {
@@ -300,7 +407,23 @@ async function main() {
       return null
     }
   })
-  const courses = mergeCourses(parsed)
+  console.log('Leyendo horarios públicos de la Facultad de Filosofía y Letras...')
+  let ffylPlans = []
+  let ffylParsed = []
+  try {
+    ffylPlans = getFfylPlans(await fetchText(FFYL_INDEX_URL))
+    ffylParsed = (await mapConcurrent(ffylPlans, Math.min(CONCURRENCY, 8), async (plan) => {
+      try {
+        return parseFfylPlanPage(await fetchText(plan.url), plan)
+      } catch (error) {
+        console.warn(`Plan FFyL omitido (${plan.career} ${plan.planName}): ${error.message}`)
+        return []
+      }
+    })).flat()
+  } catch (error) {
+    console.warn(`Facultad de Filosofía y Letras omitida: ${error.message}`)
+  }
+  const courses = mergeCourses([...parsed, ...ffylParsed])
 
   let ratings = new Map()
   try {
@@ -312,6 +435,7 @@ async function main() {
   const matchedRatings = new Map()
   for (const course of courses) {
     for (const group of course.groups) {
+      if (course.faculty !== 'Facultad de Ciencias') continue
       const teachingStaff = [
         ...group.professors.map((name) => ({ name, role: 'Profesor' })),
         ...group.assistants.map((name) => ({ name, role: 'Ayudante' })),
@@ -357,7 +481,9 @@ async function main() {
       semester,
       careerCount: careers.length,
       careers,
-      planCount: plans.length,
+      facultyCount: unique(courses.map((course) => course.faculty)).length,
+      faculties: unique(courses.map((course) => course.faculty)),
+      planCount: plans.length + ffylPlans.length,
       courseCount: courses.length,
       groupCount,
       topicCount,
@@ -366,7 +492,7 @@ async function main() {
       ratingMatches: matchedRatings.size,
       reviewPagesLoaded: reviewCache.size,
       courseErrors,
-      sources: [INDEX_URL, MISPROFESORES_URL],
+      sources: [INDEX_URL, FFYL_INDEX_URL, MISPROFESORES_URL],
     },
     courses,
   }

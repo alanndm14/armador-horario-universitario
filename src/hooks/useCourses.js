@@ -5,6 +5,7 @@ import { hasOverlap } from '../utils/overlap.js'
 
 const initialFilters = {
   search: '',
+  faculty: '',
   career: '',
   plan: '',
   semester: '',
@@ -54,20 +55,34 @@ export function useCourses(selectedItems) {
   }, [])
 
   const facets = useMemo(() => {
-    const careers = [...new Set(courses.map((course) => course.career).filter(Boolean))]
-    const plans = [...new Set(courses.map((course) => course.plan).filter(Boolean))]
-    const semesters = [...new Set(courses.map((course) => course.semester).filter(Boolean))]
-    const types = [...new Set(courses.map((course) => course.type).filter(Boolean))]
+    const withFaculty = filters.faculty ? courses.filter((course) => course.faculty === filters.faculty) : courses
+    const withCareer = filters.career ? withFaculty.filter((course) => course.career === filters.career) : withFaculty
+    const withPlan = filters.plan ? withCareer.filter((course) => course.plan === filters.plan) : withCareer
+    const withSemester = filters.semester ? withPlan.filter((course) => course.semester === filters.semester) : withPlan
+    const faculties = [...new Set(courses.map((course) => course.faculty).filter(Boolean))]
+    const careers = [...new Set(withFaculty.map((course) => course.career).filter(Boolean))]
+    const plans = [...new Set(withCareer.map((course) => course.plan).filter(Boolean))]
+    const semesters = [...new Set(withPlan.map((course) => course.semester).filter(Boolean))]
+    const types = [...new Set(withSemester.map((course) => course.type).filter(Boolean))]
     const modalities = [
-      ...new Set(courses.flatMap((course) => course.groups ?? []).map((group) => group.modality).filter(Boolean)),
+      ...new Set(withSemester.flatMap((course) => course.groups ?? []).map((group) => group.modality).filter(Boolean)),
     ]
-    return { careers, plans, semesters, types, modalities }
-  }, [courses])
+    const sort = (values) => values.sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }))
+    return {
+      faculties: sort(faculties),
+      careers: sort(careers),
+      plans: sort(plans),
+      semesters: sort(semesters),
+      types: sort(types),
+      modalities: sort(modalities),
+    }
+  }, [courses, filters.faculty, filters.career, filters.plan, filters.semester])
 
   const filteredCourses = useMemo(() => {
     const needle = normalizeText(filters.search)
     return courses
       .filter((course) => {
+        if (filters.faculty && course.faculty !== filters.faculty) return false
         if (filters.career && course.career !== filters.career) return false
         if (filters.plan && course.plan !== filters.plan) return false
         if (filters.semester && course.semester !== filters.semester) return false

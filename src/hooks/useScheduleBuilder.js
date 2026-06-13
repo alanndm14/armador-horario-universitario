@@ -14,6 +14,8 @@ export function useScheduleBuilder() {
       courseId: course.id,
       groupId: group.id,
       name: course.name,
+      faculty: course.faculty,
+      campus: course.campus,
       career: course.career,
       plan: course.plan,
       semester: course.semester,

@@ -23,7 +23,7 @@ export function Header() {
       <div>
         <h1 className="text-lg font-bold tracking-normal text-slate-950 dark:text-white">Armador de horario</h1>
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          Facultad de Ciencias UNAM · datos automáticos
+          Facultades de CU · datos automáticos
         </p>
       </div>
       <div className="flex items-center gap-2">

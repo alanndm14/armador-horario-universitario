@@ -14,7 +14,14 @@ import { useScheduleBuilder } from '../hooks/useScheduleBuilder.js'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { useToast } from '../components/ui/Toast.jsx'
 import { saveSchedule } from '../services/scheduleService.js'
-import { copySummary, downloadScheduleJson, downloadSchedulePdf, downloadSchedulePng } from '../utils/export.js'
+import {
+  copySummary,
+  downloadScheduleJson,
+  downloadSchedulePdf,
+  downloadSchedulePng,
+  downloadSearchResultsCsv,
+  downloadSearchResultsJson,
+} from '../utils/export.js'
 
 export default function Home() {
   const exportRef = useRef(null)
@@ -32,6 +39,17 @@ export default function Home() {
   const [details, setDetails] = useState(null)
   const builder = useScheduleBuilder()
   const courses = useCourses(builder.selectedItems)
+  const resultCount = courses.filteredCourses.reduce((total, course) => total + course.groups.length, 0)
+
+  async function exportSchedule(exporter, successMessage) {
+    try {
+      await exporter(exportRef.current)
+      showToast(successMessage)
+    } catch (error) {
+      console.error(error)
+      showToast('No se pudo exportar. Intenta nuevamente.')
+    }
+  }
 
   function startResize(side, event) {
     event.preventDefault()
@@ -115,7 +133,20 @@ export default function Home() {
         style={{ '--layout-columns': `${panelWidths.left}px 6px minmax(520px, 1fr) 6px ${panelWidths.right}px` }}
       >
         <aside className={`${activeTab === 'materias' ? 'block' : 'hidden'} schedule-scrollbar overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-4 md:block dark:border-slate-800 dark:bg-slate-950`}>
-          <FilterPanel filters={courses.filters} setFilters={courses.setFilters} facets={courses.facets} />
+          <FilterPanel
+            filters={courses.filters}
+            setFilters={courses.setFilters}
+            facets={courses.facets}
+            resultCount={resultCount}
+            onExportCsv={() => {
+              downloadSearchResultsCsv(courses.filteredCourses, courses.filters)
+              showToast('Resultados CSV descargados')
+            }}
+            onExportJson={() => {
+              downloadSearchResultsJson(courses.filteredCourses, courses.filters)
+              showToast('Resultados JSON descargados')
+            }}
+          />
           <div className="mt-4">
             <CourseExplorer
               courses={courses.filteredCourses}
@@ -150,8 +181,8 @@ export default function Home() {
           <ScheduleSummary
             items={builder.selectedItems}
             onSave={handleSave}
-            onPng={() => downloadSchedulePng(exportRef.current).then(() => showToast('PNG descargado'))}
-            onPdf={() => downloadSchedulePdf(exportRef.current).then(() => showToast('PDF exportado'))}
+            onPng={() => exportSchedule(downloadSchedulePng, 'PNG descargado')}
+            onPdf={() => exportSchedule(downloadSchedulePdf, 'PDF exportado')}
             onCopy={() => copySummary(builder.selectedItems).then(() => showToast('Resumen copiado'))}
             onJson={() => {
               downloadScheduleJson(builder.selectedItems)
