@@ -109,12 +109,17 @@ export function downloadSearchResultsJson(courses, filters, fileName = 'resultad
 }
 
 export function downloadSearchResultsCsv(courses, filters, fileName = 'resultados-materias.csv') {
-  const rows = resultRows(courses)
-  const csv = Papa.unparse([
-    { facultad: 'CRITERIOS DE BÚSQUEDA', campus: JSON.stringify(filters) },
-    {},
-    ...rows,
-  ])
+  const csv = buildSearchResultsCsv(courses, filters)
   const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' })
   triggerDownload(URL.createObjectURL(blob), fileName, true)
+}
+
+export function buildSearchResultsCsv(courses, filters) {
+  const generatedAt = new Date().toISOString()
+  const criteria = JSON.stringify(filters)
+  return Papa.unparse(resultRows(courses).map((row) => ({
+    exportado_en: generatedAt,
+    criterios_busqueda: criteria,
+    ...row,
+  })))
 }

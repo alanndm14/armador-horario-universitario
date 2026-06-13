@@ -1,12 +1,18 @@
 import crypto from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import * as cheerio from 'cheerio'
+import { PDFParse } from 'pdf-parse'
 
 const BASE_URL = 'https://www.fciencias.unam.mx'
 const INDEX_URL = `${BASE_URL}/docencia/horarios/indice`
 const MISPROFESORES_URL = 'https://www.misprofesores.com/escuelas/Facultad-de-Ciencias-UNAM_2842'
 const FFYL_BASE_URL = 'https://servicios-galileo.filos.unam.mx'
 const FFYL_INDEX_URL = `${FFYL_BASE_URL}/horarios/ordinarios`
+const ENGINEERING_BASE_URL = 'https://www.ssa.ingenieria.unam.mx'
+const ENGINEERING_INDEX_URL = `${ENGINEERING_BASE_URL}/horarios.html`
+const ENGINEERING_LIST_URL = `${ENGINEERING_BASE_URL}/cj/tmp/programacion_horarios/listaAsignatura.js`
+const IIMAS_SCHEDULE_URL = 'https://www.iimas.unam.mx/wp-content/uploads/2026/01/horarios-semestre-2026-2-web.pdf'
+const MEDICINE_SCHEDULE_URL = 'https://escolares.facmed.unam.mx/pagina-web/menu/archivos/pregrado/medico-cirujano/programaciones/90c311b16e6112f03be0cef51fb1a180.pdf'
 const OUTPUT_PATH = new URL('../public/data/courses.json', import.meta.url)
 const CONCURRENCY = Math.max(1, Number(process.env.SYNC_CONCURRENCY || 12))
 const MAX_COURSES = Math.max(0, Number(process.env.MAX_COURSES || 0))
@@ -276,6 +282,197 @@ function parseFfylPlanPage(html, target) {
   return parsed.filter((course) => course.groups.length)
 }
 
+function parseEngineeringSubjects(script) {
+  return [...script.matchAll(/asignatura\['(\d+)'\]\s*=\s*'([^']*)'/g)].map((match) => ({
+    key: match[1],
+    name: match[2].replace(/\s+/g, ' ').trim(),
+    url: `${ENGINEERING_BASE_URL}/cj/tmp/programacion_horarios/${match[1]}.html`,
+  }))
+}
+
+function engineeringDays(value = '') {
+  const map = { lun: 'Lu', mar: 'Ma', mie: 'Mi', jue: 'Ju', vie: 'Vi', sab: 'Sa' }
+  return String(value).split(',').map((day) => map[normalizeText(day)]).filter(Boolean)
+}
+
+function parseEngineeringCourse(html, target) {
+  const $ = cheerio.load(html)
+  const groups = new Map()
+  $('.compu table tbody').each((_, tbody) => {
+    let group = null
+    $(tbody).find('tr').each((__, row) => {
+      const cells = $(row).find('td').map((___, cell) => $(cell).text().replace(/\s+/g, ' ').trim()).get()
+      if (cells.length >= 9) {
+        const professorText = cells[2]
+        const modality = professorText.match(/\(([^)]+)\)\s*$/)?.[1] ?? 'Sin modalidad'
+        const professor = professorText.replace(/\([^)]+\)\s*$/, '').trim()
+        const quota = Number(cells[7])
+        const vacancies = Number(cells[8])
+        group = {
+          id: slugify(`ingenieria-${target.key}-${cells[1]}`),
+          groupNumber: cells[1],
+          topic: null,
+          professors: professor ? [professor] : [],
+          assistants: [],
+          modality,
+          schedules: [],
+          classroom: cells[6] || null,
+          quota: Number.isFinite(quota) ? quota : null,
+          students: Number.isFinite(quota) && Number.isFinite(vacancies) ? quota - vacancies : null,
+          vacancies: Number.isFinite(vacancies) ? vacancies : null,
+          rating: null,
+          professorRatings: [],
+          notes: `Tipo oficial: ${cells[3] || 'Sin publicar'}`,
+          source: 'ssa.ingenieria.unam.mx',
+          sourceUrl: target.url,
+          hasPresentation: false,
+          presentationUrl: null,
+          sourceGroupId: null,
+          finalExams: null,
+          updatedAt: new Date().toISOString(),
+        }
+        groups.set(group.groupNumber, group)
+        for (const day of engineeringDays(cells[5])) {
+          group.schedules.push({ day, start: cells[4].slice(0, 5), end: cells[4].slice(-5), classroom: cells[6] || null, type: cells[3] || 'clase', note: null })
+        }
+      } else if (group && cells.length >= 3) {
+        for (const day of engineeringDays(cells[1])) {
+          group.schedules.push({ day, start: cells[0].slice(0, 5), end: cells[0].slice(-5), classroom: cells[2] || null, type: 'clase', note: null })
+        }
+      }
+    })
+  })
+  const department = $('strong').first().text().replace(/\s+/g, ' ').trim() || null
+  return {
+    course: {
+      id: slugify(`facultad-ingenieria-20262-${target.key}-${target.name}`),
+      name: target.name,
+      normalizedName: normalizeText(target.name),
+      faculty: 'Facultad de Ingeniería',
+      campus: 'Ciudad Universitaria',
+      career: 'Ingeniería (todas las carreras)',
+      plan: 'Oferta oficial 2026-2',
+      plans: ['Oferta oficial 2026-2'],
+      semester: 'Sin semestre publicado',
+      period: '20262',
+      type: 'Asignatura',
+      credits: null,
+      department,
+      isActive: true,
+      sourceUrl: target.url,
+      sourceHash: crypto.createHash('sha256').update(html).digest('hex'),
+      lastSyncedAt: new Date().toISOString(),
+    },
+    groups: [...groups.values()].map((group) => ({ ...group, schedules: sortSchedules(group.schedules) })),
+  }
+}
+
+async function pdfPages(url) {
+  const parser = new PDFParse({ url })
+  try {
+    return (await parser.getText()).pages
+  } finally {
+    await parser.destroy()
+  }
+}
+
+function partialOfficialGroup({ faculty, career, plan, semester, period, name, groupNumber, professors = [], assistants = [], notes, sourceUrl }) {
+  return {
+    course: {
+      id: slugify(`${faculty}-${career}-${plan}-${period}-${name}`),
+      name,
+      normalizedName: normalizeText(name),
+      faculty,
+      campus: 'Ciudad Universitaria',
+      career,
+      plan,
+      plans: [plan],
+      semester,
+      period,
+      type: 'Asignatura',
+      credits: null,
+      department: null,
+      isActive: true,
+      sourceUrl,
+      sourceHash: crypto.createHash('sha256').update(notes).digest('hex'),
+      lastSyncedAt: new Date().toISOString(),
+    },
+    groups: [{
+      id: slugify(`${faculty}-${career}-${groupNumber}-${name}`),
+      groupNumber,
+      topic: null,
+      professors,
+      assistants,
+      modality: 'Consultar fuente oficial',
+      schedules: [],
+      classroom: null,
+      quota: null,
+      students: null,
+      rating: null,
+      professorRatings: [],
+      notes,
+      source: new URL(sourceUrl).hostname,
+      sourceUrl,
+      hasPresentation: false,
+      presentationUrl: null,
+      sourceGroupId: null,
+      finalExams: null,
+      updatedAt: new Date().toISOString(),
+    }],
+  }
+}
+
+function parseIimasPages(pages) {
+  return pages.slice(0, 2).flatMap((page) => {
+    const header = page.text.match(/(Sexto|Octavo) Semestre[\s\S]*?Plan de Estudios:\s*(\d+)/i)
+    if (!header) return []
+    const blocks = page.text.split(/(?=^\d{4}\s+\d{4}\b)/gm).slice(1)
+    return blocks.map((block) => {
+      const match = block.match(/^(\d{4})\s+(\d{4})\s+([\s\S]*?)(?:\d+\s*horas?|\n(?:Dr|Dra|Lic|M\.C|Esp|Ing)\.)/i)
+      if (!match) return null
+      const name = match[3].replace(/\s+/g, ' ').trim()
+      const publishedTeam = block.match(/\d+\s*horas?\s+([\s\S]*?)(?=\d{1,2}:\d{2})/i)?.[1].replace(/\s+/g, ' ').trim()
+      return partialOfficialGroup({
+        faculty: 'Instituto de Investigaciones en Matemáticas Aplicadas y en Sistemas',
+        career: 'Ciencia de Datos',
+        plan: `Plan de Estudios ${header[2]}`,
+        semester: `${header[1]} Semestre`,
+        period: '20262',
+        name,
+        groupNumber: match[1],
+        professors: publishedTeam ? [`Equipo docente publicado: ${publishedTeam}`] : [],
+        notes: block.replace(/\s+/g, ' ').trim(),
+        sourceUrl: IIMAS_SCHEDULE_URL,
+      })
+    }).filter(Boolean)
+  })
+}
+
+function parseMedicinePages(pages) {
+  const courses = [
+    'Anatomía',
+    'Biología Celular e Histología Médica',
+    'Bioquímica y Biología Molecular',
+    'Embriología Humana',
+    'Integración Básico Clínica 1',
+    'Introducción a la Salud Mental',
+    'Salud Pública y Comunidad',
+    'Informática Biomédica 1',
+  ]
+  const groups = unique(pages.flatMap((page) => page.text.match(/\b11\d{2}\b/g) ?? []))
+  return courses.flatMap((name) => groups.map((groupNumber) => partialOfficialGroup({
+    faculty: 'Facultad de Medicina',
+    career: 'Médico Cirujano',
+    plan: 'Plan vigente publicado',
+    semester: 'Primer año',
+    period: '2025-2026',
+    name,
+    groupNumber,
+    notes: 'El horario detallado se publica como cuadrícula visual en el PDF oficial. Consulta la fuente para confirmar día, hora, aula y tipo de sesión.',
+    sourceUrl: MEDICINE_SCHEDULE_URL,
+  })))
+}
+
 async function fetchText(url, attempt = 1) {
   const response = await fetch(url, {
     headers: {
@@ -288,6 +485,23 @@ async function fetchText(url, attempt = 1) {
   if (attempt < 3 && (response.status === 429 || response.status >= 500)) {
     await new Promise((resolve) => setTimeout(resolve, 750 * attempt))
     return fetchText(url, attempt + 1)
+  }
+  throw new Error(`HTTP ${response.status} al leer ${url}`)
+}
+
+async function fetchEngineeringText(url, attempt = 1) {
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  const response = await fetch(url, {
+    headers: {
+      'user-agent': 'armador-horario-universitario/1.0 (public academic data sync)',
+      accept: 'text/html,application/xhtml+xml',
+    },
+    signal: AbortSignal.timeout(45_000),
+  })
+  if (response.ok) return response.text()
+  if (attempt < 8 && (response.status === 429 || response.status >= 500)) {
+    await new Promise((resolve) => setTimeout(resolve, 3000 * attempt))
+    return fetchEngineeringText(url, attempt + 1)
   }
   throw new Error(`HTTP ${response.status} al leer ${url}`)
 }
@@ -369,7 +583,20 @@ function mergeCourses(parsedCourses) {
   )
 }
 
+function previousFacultyCourses(previousCourses, faculty) {
+  return previousCourses
+    .filter((course) => course.faculty === faculty)
+    .map((course) => ({ course: { ...course, groups: undefined }, groups: course.groups ?? [] }))
+}
+
 async function main() {
+  let previousCourses = []
+  try {
+    const previousPayload = JSON.parse(await readFile(OUTPUT_PATH, 'utf8'))
+    previousCourses = previousPayload.courses ?? []
+  } catch {
+    previousCourses = []
+  }
   console.log('Descubriendo carreras y planes oficiales...')
   const indexSettings = extractDrupalSettings(await fetchText(INDEX_URL))
   const semester = String(indexSettings.semestre_actual || indexSettings.semestre || '')
@@ -423,7 +650,43 @@ async function main() {
   } catch (error) {
     console.warn(`Facultad de Filosofía y Letras omitida: ${error.message}`)
   }
-  const courses = mergeCourses([...parsed, ...ffylParsed])
+
+  console.log('Leyendo horarios públicos de la Facultad de Ingeniería...')
+  let engineeringParsed = previousFacultyCourses(previousCourses, 'Facultad de Ingeniería')
+  try {
+    const engineeringSubjects = parseEngineeringSubjects(await fetchText(ENGINEERING_LIST_URL))
+    const refreshedEngineering = await mapConcurrent(engineeringSubjects, 2, async (subject, index) => {
+      if ((index + 1) % 100 === 0) console.log(`Asignaturas de Ingeniería procesadas: ${index + 1}/${engineeringSubjects.length}`)
+      try {
+        const parsedCourse = parseEngineeringCourse(await fetchEngineeringText(subject.url), subject)
+        return parsedCourse.groups.length ? parsedCourse : null
+      } catch (error) {
+        console.warn(`Asignatura de Ingeniería omitida (${subject.name}): ${error.message}`)
+        return null
+      }
+    })
+    engineeringParsed = [...engineeringParsed, ...refreshedEngineering]
+  } catch (error) {
+    console.warn(`Facultad de Ingeniería omitida: ${error.message}`)
+  }
+
+  console.log('Leyendo horario oficial de Ciencia de Datos IIMAS...')
+  let iimasParsed = previousFacultyCourses(previousCourses, 'Instituto de Investigaciones en Matemáticas Aplicadas y en Sistemas')
+  try {
+    iimasParsed = [...iimasParsed, ...parseIimasPages(await pdfPages(IIMAS_SCHEDULE_URL))]
+  } catch (error) {
+    console.warn(`Ciencia de Datos IIMAS omitida: ${error.message}`)
+  }
+
+  console.log('Leyendo grupos oficiales de la Facultad de Medicina...')
+  let medicineParsed = previousFacultyCourses(previousCourses, 'Facultad de Medicina')
+  try {
+    medicineParsed = [...medicineParsed, ...parseMedicinePages(await pdfPages(MEDICINE_SCHEDULE_URL))]
+  } catch (error) {
+    console.warn(`Facultad de Medicina omitida: ${error.message}`)
+  }
+
+  const courses = mergeCourses([...parsed, ...ffylParsed, ...engineeringParsed, ...iimasParsed, ...medicineParsed])
 
   let ratings = new Map()
   try {
@@ -483,7 +746,7 @@ async function main() {
       careers,
       facultyCount: unique(courses.map((course) => course.faculty)).length,
       faculties: unique(courses.map((course) => course.faculty)),
-      planCount: plans.length + ffylPlans.length,
+      planCount: unique(courses.map((course) => `${course.faculty}|${course.plan}`)).length,
       courseCount: courses.length,
       groupCount,
       topicCount,
@@ -492,7 +755,7 @@ async function main() {
       ratingMatches: matchedRatings.size,
       reviewPagesLoaded: reviewCache.size,
       courseErrors,
-      sources: [INDEX_URL, FFYL_INDEX_URL, MISPROFESORES_URL],
+      sources: [INDEX_URL, FFYL_INDEX_URL, ENGINEERING_INDEX_URL, IIMAS_SCHEDULE_URL, MEDICINE_SCHEDULE_URL, MISPROFESORES_URL],
     },
     courses,
   }
